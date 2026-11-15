@@ -442,9 +442,12 @@ def find_topic_photo(title: str):
         if photo is not None:
             return photo, credit
 
-    # 2. Openverse CC0 photos (few diabetes photos, so only a fallback)
+    # 2. Openverse CC0 photos (few diabetes photos, so only a fallback). It has almost nothing for the
+    #    diabetes-specific phrases, so broader healthy-living phrases come after them.
+    print("Notice: no Pixabay/Pexels photo; trying Openverse (set PIXABAY_API_KEY for diabetes photos).")
+    generic = random.sample(cfg.OPENVERSE_GENERIC_QUERIES, len(cfg.OPENVERSE_GENERIC_QUERIES))
     for sources in (cfg.OPENVERSE_SOURCES, cfg.OPENVERSE_FALLBACK_SOURCES):
-        for query in queries:
+        for query in queries + [q for q in generic if q not in queries]:
             results = search_open_photos(query, sources)
             if not results:
                 continue

@@ -102,6 +102,10 @@ def main():
 
     with st.sidebar:
         st.header("⚙️ System Status")
+        if os.getenv("PIXABAY_API_KEY", "").strip() or os.getenv("PEXELS_API_KEY", "").strip():
+            st.success("Photos: Pixabay/Pexels connected")
+        else:
+            st.error("PIXABAY_API_KEY missing: articles get few or no diabetes photos (add it in Secrets)")
         if env["has_sanity"]:
             st.success(f"Connected to Sanity project `{cfg.SANITY_PROJECT_ID}`")
         else:

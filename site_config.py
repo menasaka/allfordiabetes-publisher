@@ -276,7 +276,14 @@ DEFAULT_PHOTO_QUERIES = [
     "diabetes test strips", "healthy meal plate",
 ]
 
-# Pexels photo descriptions containing these words are skipped
+# Last-resort Openverse phrases (only when Pixabay/Pexels give nothing), so an article still gets a photo
+# instead of a plain title card
+OPENVERSE_GENERIC_QUERIES = [
+    "vegetables", "healthy food", "walking", "running", "cycling", "fruit market", "stethoscope",
+    "pharmacy", "sleeping", "yoga", "cooking", "salad",
+]
+
+# Pexels/Pixabay photo descriptions containing these words are skipped
 PEXELS_ALT_BLOCKLIST = [
     "wound", "amputat", "surgery", "operation", "corpse", "skull", "funeral", "cigarette", "smoking",
     "cake", "candy", "donut", "doughnut", "cupcake", "dessert", "soda", "text", "logo", "sign",
