@@ -252,7 +252,7 @@ SHOW_DOMAIN_ON_IMAGE = False
 GRAYSCALE_IMAGES = False    # True = every featured image is saved in black and white (recurrentdepression uses True)
 
 PHOTO_QUERY_PROMPT = """
-Suggest stock photo search phrases (for Pexels) for the featured image of a diabetes article titled: "{topic}".
+Suggest stock photo search phrases (for Pixabay / Pexels) for the featured image of a diabetes article titled: "{topic}".
 
 Rules:
 - 6 phrases, best first. Each is 2 to 4 plain visual words a stock photo site would tag.

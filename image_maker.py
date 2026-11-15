@@ -247,6 +247,73 @@ def _photo_used(photo_id, landing_url: str) -> bool:
 
 
 # ------------------------------------------------------------------------------
+# Pixabay (free stock photos, free for commercial use, no attribution required).
+# Its API terms ask that images are downloaded and served from your own server, not hotlinked:
+# the publisher uploads every image to Sanity, so that is covered.
+# ------------------------------------------------------------------------------
+
+def search_pixabay(query: str, page: int = 1) -> list:
+    """Searches Pixabay for horizontal photos. Needs PIXABAY_API_KEY. Returns unused, suitable results."""
+    key = os.getenv("PIXABAY_API_KEY", "").strip()
+    if not key:
+        return []
+    try:
+        res = requests.get(
+            "https://pixabay.com/api/",
+            params={
+                "key": key, "q": query[:100], "image_type": "photo", "orientation": "horizontal",
+                "safesearch": "true", "min_width": cfg.IMAGE_SIZE[0], "per_page": 50, "page": page, "lang": "en",
+            },
+            timeout=20,
+        )
+        if res.status_code != 200:
+            print(f"Notice: Pixabay returned {res.status_code} for '{query}'")
+            return []
+        results = []
+        for p in res.json().get("hits", []):
+            tags = (p.get("tags") or "").lower()
+            if any(w in tags for w in cfg.PEXELS_ALT_BLOCKLIST):
+                continue
+            if _photo_used(f"pixabay-{p.get('id')}", p.get("pageURL")):
+                continue
+            results.append(p)
+        return results
+    except Exception as e:
+        print(f"Notice: Pixabay search failed for '{query}': {e}")
+        return []
+
+
+def find_pixabay_photo(queries: list):
+    """Returns (PIL image, credit dict) for an unused Pixabay photo matching one of the queries, or (None, None)."""
+    if not os.getenv("PIXABAY_API_KEY", "").strip():
+        print("Notice: PIXABAY_API_KEY is not set; skipping Pixabay.")
+        return None, None
+    for query in queries:
+        for page in (1, 2):
+            results = search_pixabay(query, page)
+            if not results:
+                continue
+            # Random pick among the best matches, so articles on similar topics get different photos
+            for p in random.sample(results[:12], min(3, len(results[:12]))):
+                photo = _download_photo(p.get("largeImageURL"))
+                if photo is None:
+                    continue
+                _USED_PHOTO_IDS.add(f"pixabay-{p.get('id')}")
+                credit = {
+                    "query": query,
+                    "title": p.get("tags") or "",
+                    "creator": p.get("user") or "",
+                    "source": "Pixabay",
+                    "license": "Pixabay Content License",
+                    "landing_url": p.get("pageURL") or "",
+                }
+                print(f"[Image Engine] Using Pixabay photo '{credit['title']}' by {credit['creator']} for '{query}'")
+                return photo, credit
+            break  # page 2 only when page 1 had nothing usable
+    return None, None
+
+
+# ------------------------------------------------------------------------------
 # Pexels (free stock photos, free for commercial use, no attribution required)
 # ------------------------------------------------------------------------------
 
@@ -369,10 +436,11 @@ def find_topic_photo(title: str):
     queries = generate_photo_queries(title)
     print(f"[Image Engine] Photo search phrases: {queries}")
 
-    # 1. Pexels: large library with real diabetes photos (meters, insulin pens, meals, exercise)
-    photo, credit = find_pexels_photo(queries)
-    if photo is not None:
-        return photo, credit
+    # 1. Pixabay, then Pexels: large libraries with real diabetes photos (meters, insulin pens, meals, exercise)
+    for finder in (find_pixabay_photo, find_pexels_photo):
+        photo, credit = finder(queries)
+        if photo is not None:
+            return photo, credit
 
     # 2. Openverse CC0 photos (few diabetes photos, so only a fallback)
     for sources in (cfg.OPENVERSE_SOURCES, cfg.OPENVERSE_FALLBACK_SOURCES):

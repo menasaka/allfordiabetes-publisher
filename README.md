@@ -44,7 +44,7 @@ done yet, so a late or skipped GitHub run is made up by the next one until 5:59p
 twice, even if re-run.
 
 **Setup (once):** GitHub repo → Settings → Secrets and variables → Actions → New repository secret:
-`OPENAI_API_KEY`, `SANITY_API_TOKEN` and `PEXELS_API_KEY` (or one secret named `AUTOMATION` with lines like
+`OPENAI_API_KEY`, `SANITY_API_TOKEN` and `PIXABAY_API_KEY` (optional: `PEXELS_API_KEY`) (or one secret named `AUTOMATION` with lines like
 `OPENAI_API_KEY = "..."`).
 
 **Test / run now:** repo → Actions → "Daily news auto-publish" → Run workflow →
@@ -74,9 +74,10 @@ One 1200×800 featured image per article, with the title in a dark strip across 
 
 1. OpenAI suggests diabetes-specific photo searches for the title ("glucose meter", "insulin pen",
    "checking blood sugar", "low carb meal", ...).
-2. **Pexels** (needs the free `PEXELS_API_KEY` from https://www.pexels.com/api/; free for commercial use, no credit
-   required): a random pick among the best unused matches.
-3. If Pexels has nothing: Openverse CC0 photos. If still nothing: a blue-to-teal title card.
+2. **Pixabay** (needs the free `PIXABAY_API_KEY` from https://pixabay.com/api/docs/; free for commercial use, no credit
+   required; images must be re-hosted, which the Sanity upload does): a random pick among the best unused matches.
+   Then **Pexels** if `PEXELS_API_KEY` is set (Pexels paused new keys in Nov 2026).
+3. If neither has a photo: Openverse CC0 photos. If still nothing: a blue-to-teal title card.
 
 **A photo is never used twice:** every uploaded image keeps its photo page URL in the Sanity asset description,
 and the publisher skips any photo whose URL is already there.
