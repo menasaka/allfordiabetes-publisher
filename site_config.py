@@ -101,6 +101,25 @@ SAMPLE_TOPICS = [
 # Formatting
 # ------------------------------------------------------------------------------
 H2_OPEN_TAG = "<h2>"
+# New article URLs have at most this many words. OpenAI picks the main keyword (SLUG_PROMPT);
+# if that fails, the first words of the title are used with filler words ("what", "and", "the") dropped.
+# A "-2" is still added when the URL is already taken.
+SLUG_MAX_WORDS = 4
+SLUG_PROMPT = """
+Write a short SEO URL slug for a diabetes health article titled: "{topic}".
+
+Rules:
+- At most {max_words} words in total, lowercase, joined by hyphens. Every number counts as a word
+  ("type-2-diabetes" is 3 words, "glp-1" is 2 words).
+- Use the article's main search keyword, the words people would type into Google. Keep the most important
+  words and drop filler words (what, how, your, and, the, of, to).
+- Plain English words only. No dates, no site name, no stop words at the start or end.
+
+Examples: "What Your A1C Number Means and How to Bring It Down" -> "lower-a1c-levels";
+"Early Signs of Type 2 Diabetes Many People Miss" -> "type-2-diabetes-signs".
+
+Return ONLY JSON: {{"slug": "..."}}
+"""
 FAQ_HEADING = "Frequently Asked Questions"
 SHORTCODES_LIST = []
 

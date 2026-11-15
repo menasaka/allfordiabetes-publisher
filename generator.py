@@ -100,5 +100,26 @@ def generate_photo_queries(topic_title: str) -> list:
     return list(cfg.DEFAULT_PHOTO_QUERIES)
 
 
+def generate_slug_words(topic_title: str, max_words: int = 4) -> list:
+    """
+    Asks OpenAI for a short SEO URL slug (the title's main keyword in at most max_words words).
+    Returns the words as a list, or [] if anything goes wrong (the caller then uses a rule-based slug).
+    """
+    try:
+        response = _get_client().chat.completions.create(
+            model=_model(),
+            messages=[{"role": "user", "content": cfg.SLUG_PROMPT.format(topic=topic_title, max_words=max_words)}],
+            response_format={"type": "json_object"},
+            max_tokens=60,
+            temperature=0.2,
+        )
+        slug = str(json.loads(response.choices[0].message.content).get("slug", ""))
+        words = [w for w in re.split(r"[^a-z0-9]+", slug.lower()) if w]
+        return words if 0 < len(words) <= max_words else []
+    except Exception as e:
+        print(f"Notice: slug generation failed ({e}); using the rule-based slug.")
+        return []
+
+
 # Backward compatibility alias
 generate_faq_items = generate_faqs

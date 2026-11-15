@@ -180,6 +180,34 @@ def slugify(title: str) -> str:
     return re.sub(r"[\s-]+", "-", s).strip("-")[:90].rstrip("-") or "article"
 
 
+# Filler words left out of article URLs, so the 4 words kept are the meaningful ones.
+SLUG_STOP_WORDS = {
+    "a", "an", "the", "and", "or", "but", "nor", "of", "to", "in", "on", "at", "for", "with", "by", "from",
+    "about", "as", "into", "is", "are", "was", "be", "can", "could", "may", "might", "should", "will", "do",
+    "does", "your", "you", "my", "our", "their", "its", "it", "this", "that", "these", "those",
+    "what", "why", "how", "when", "which", "who", "where", "here", "s", "vs",
+}
+
+
+def short_slug(title: str, max_words: int = None) -> str:
+    """
+    Article URL slug of at most SLUG_MAX_WORDS words (default 4): OpenAI picks the main keyword;
+    if that fails, the title's first meaningful words are used (filler words dropped).
+    """
+    max_words = max_words or getattr(cfg, "SLUG_MAX_WORDS", 4)
+    try:
+        from generator import generate_slug_words
+        ai_words = generate_slug_words(title, max_words)
+    except Exception as e:
+        print(f"Notice: slug generation unavailable ({e}); using the rule-based slug.")
+        ai_words = []
+    if ai_words:
+        return "-".join(ai_words)
+    words = [w for w in slugify(title).split("-") if w]
+    keep = [w for w in words if w not in SLUG_STOP_WORDS] or words
+    return "-".join(keep[:max_words]) or "article"
+
+
 def unique_path(slug: str) -> str:
     """Returns /slug/ (or /slug-2/ ...) that no article or page uses yet."""
     base, n = slug, 1
@@ -267,7 +295,7 @@ def publish_sanity_post(
     site = os.getenv("SITE_PUBLIC_URL", cfg.SITE_URL).rstrip("/")
 
     try:
-        path = unique_path(slug or slugify(title))
+        path = unique_path(slug or short_slug(title))
         asset_id = None
         for p in image_paths or []:
             asset_id = upload_image(p, title)
