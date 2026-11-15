@@ -252,21 +252,35 @@ SHOW_DOMAIN_ON_IMAGE = False
 GRAYSCALE_IMAGES = False    # True = every featured image is saved in black and white (recurrentdepression uses True)
 
 PHOTO_QUERY_PROMPT = """
-Suggest stock photo search phrases for a featured image for a diabetes health article titled: "{topic}".
+Suggest stock photo search phrases (for Pexels) for the featured image of a diabetes article titled: "{topic}".
 
 Rules:
-- 6 phrases, best first. Each is 1 to 3 plain visual words that a free stock photo site would tag
-  (for example: "salad bowl", "vegetables", "walking park", "doctor patient", "running shoes",
-  "fruit market", "pregnant woman", "family dinner", "cooking kitchen", "cycling").
-- Positive, healthy images. Nothing distressing: no wounds, amputations, needles in skin, blood close-ups
-  or hospital emergencies; no cakes, candy or junk food piles.
-- Describe things a camera can photograph. No medical jargon, no brand names, no drug names, no text.
-- Mix specific phrases with broader fallbacks.
+- 6 phrases, best first. Each is 2 to 4 plain visual words a stock photo site would tag.
+- The photo must clearly look like DIABETES to a reader. The first 3 phrases MUST show a diabetes object or
+  action that fits this article, for example: "glucose meter", "blood sugar test", "checking blood sugar",
+  "insulin pen", "insulin injection", "continuous glucose monitor", "diabetes test strips", "glucometer finger",
+  "diabetes medication pills", "weight loss injection", "pregnant woman glucose test", "child insulin pump",
+  "doctor checking blood sugar", "diabetic foot exam", "eye exam".
+- The other 3 phrases may show the article's theme with a diabetes or health angle, for example:
+  "healthy meal plate", "low carb meal", "measuring waist", "woman jogging", "pharmacist medicine",
+  "family cooking vegetables". Avoid plain generic phrases such as "doctor patient", "salad bowl" or "fruit".
+- Pick phrases that suit THIS title, so different articles get different pictures.
+- Nothing distressing: no wounds, amputations, surgery, hospital emergencies; no cakes, candy or junk food piles.
+- No brand names, no drug names, no text.
 
 Return ONLY JSON: {{"queries": ["...", "..."]}}
 """
-# Used if OpenAI can't suggest phrases
-DEFAULT_PHOTO_QUERIES = ["salad bowl", "vegetables", "walking park", "doctor patient", "fruit", "cycling"]
+# Used if OpenAI can't suggest phrases (shuffled each time, so articles still get different photos)
+DEFAULT_PHOTO_QUERIES = [
+    "glucose meter", "checking blood sugar", "insulin pen", "continuous glucose monitor",
+    "diabetes test strips", "healthy meal plate",
+]
+
+# Pexels photo descriptions containing these words are skipped
+PEXELS_ALT_BLOCKLIST = [
+    "wound", "amputat", "surgery", "operation", "corpse", "skull", "funeral", "cigarette", "smoking",
+    "cake", "candy", "donut", "doughnut", "cupcake", "dessert", "soda", "text", "logo", "sign",
+]
 
 # Words that suggest the wrong kind of image for a health site
 PHOTO_TITLE_BLOCKLIST = [

@@ -88,16 +88,21 @@ def generate_photo_queries(topic_title: str) -> list:
             messages=[{"role": "user", "content": cfg.PHOTO_QUERY_PROMPT.format(topic=topic_title)}],
             response_format={"type": "json_object"},
             max_tokens=200,
-            temperature=0.4,
+            temperature=0.8,
         )
         data = json.loads(response.choices[0].message.content)
         queries = [str(q).strip().lower() for q in data.get("queries", []) if str(q).strip()]
         if queries:
-            # Always keep generic fallbacks at the end
-            return queries[:6] + [q for q in cfg.DEFAULT_PHOTO_QUERIES if q not in queries]
+            # Always keep the default (shuffled) phrases at the end as fallbacks
+            return queries[:6] + [q for q in _shuffled_defaults() if q not in queries]
     except Exception as e:
         print(f"Notice: photo query generation failed ({e}); using defaults.")
-    return list(cfg.DEFAULT_PHOTO_QUERIES)
+    return _shuffled_defaults()
+
+
+def _shuffled_defaults() -> list:
+    import random
+    return random.sample(list(cfg.DEFAULT_PHOTO_QUERIES), len(cfg.DEFAULT_PHOTO_QUERIES))
 
 
 def generate_slug_words(topic_title: str, max_words: int = 4) -> list:

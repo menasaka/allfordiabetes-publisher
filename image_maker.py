@@ -221,6 +221,92 @@ OPENVERSE_HEADERS = {"User-Agent": f"{cfg.SITE_DOMAIN}-publisher/1.0"}
 # Credit/source info for each generated file, read by wp_publisher for the media description
 IMAGE_CREDITS = {}
 _USED_PHOTO_IDS = set()  # avoid repeating a photo within one app session / batch
+_SITE_PHOTO_URLS = None  # photo page URLs already used on the site (read once from Sanity)
+
+
+def site_used_photo_urls() -> set:
+    """
+    Photo page URLs (Pexels / Openverse landing pages) that featured images on the site already use.
+    Each uploaded image keeps its credit, including that URL, in the Sanity asset description.
+    """
+    global _SITE_PHOTO_URLS
+    if _SITE_PHOTO_URLS is None:
+        _SITE_PHOTO_URLS = set()
+        try:
+            from sanity_publisher import query  # local import: sanity_publisher imports this module
+            for desc in query('*[_type == "sanity.imageAsset" && defined(description)].description') or []:
+                _SITE_PHOTO_URLS.update(u.rstrip("/") for u in re.findall(r"https?://\S+", str(desc)))
+            print(f"[Image Engine] {len(_SITE_PHOTO_URLS)} photos already used on the site will be skipped.")
+        except Exception as e:
+            print(f"Notice: could not read the photos already used on the site ({e}).")
+    return _SITE_PHOTO_URLS
+
+
+def _photo_used(photo_id, landing_url: str) -> bool:
+    return photo_id in _USED_PHOTO_IDS or (landing_url or "").rstrip("/") in site_used_photo_urls()
+
+
+# ------------------------------------------------------------------------------
+# Pexels (free stock photos, free for commercial use, no attribution required)
+# ------------------------------------------------------------------------------
+
+def search_pexels(query: str, page: int = 1) -> list:
+    """Searches Pexels for landscape photos. Needs PEXELS_API_KEY. Returns unused, suitable results."""
+    key = os.getenv("PEXELS_API_KEY", "").strip()
+    if not key:
+        return []
+    try:
+        res = requests.get(
+            "https://api.pexels.com/v1/search",
+            params={"query": query, "orientation": "landscape", "per_page": 40, "page": page, "locale": "en-US"},
+            headers={"Authorization": key},
+            timeout=20,
+        )
+        if res.status_code != 200:
+            print(f"Notice: Pexels returned {res.status_code} for '{query}'")
+            return []
+        results = []
+        for p in res.json().get("photos", []):
+            alt = (p.get("alt") or "").lower()
+            if any(w in alt for w in cfg.PEXELS_ALT_BLOCKLIST):
+                continue
+            if (p.get("width") or 0) < cfg.IMAGE_SIZE[0] or _photo_used(f"pexels-{p.get('id')}", p.get("url")):
+                continue
+            results.append(p)
+        return results
+    except Exception as e:
+        print(f"Notice: Pexels search failed for '{query}': {e}")
+        return []
+
+
+def find_pexels_photo(queries: list):
+    """Returns (PIL image, credit dict) for an unused Pexels photo matching one of the queries, or (None, None)."""
+    if not os.getenv("PEXELS_API_KEY", "").strip():
+        print("Notice: PEXELS_API_KEY is not set; skipping Pexels.")
+        return None, None
+    for query in queries:
+        for page in (1, 2):
+            results = search_pexels(query, page)
+            if not results:
+                continue
+            # Random pick among the best matches, so articles on similar topics get different photos
+            for p in random.sample(results[:12], min(3, len(results[:12]))):
+                src = p.get("src") or {}
+                photo = _download_photo(src.get("large2x") or src.get("original"))
+                if photo is None:
+                    continue
+                _USED_PHOTO_IDS.add(f"pexels-{p.get('id')}")
+                credit = {
+                    "query": query,
+                    "title": p.get("alt") or "",
+                    "creator": p.get("photographer") or "",
+                    "source": "Pexels",
+                    "license": "Pexels License",
+                    "landing_url": p.get("url") or "",
+                }
+                print(f"[Image Engine] Using Pexels photo '{credit['title']}' by {credit['creator']} for '{query}'")
+                return photo, credit
+    return None, None
 
 
 def search_open_photos(query: str, sources: list) -> list:
@@ -244,7 +330,7 @@ def search_open_photos(query: str, sources: list) -> list:
             title_l = (r.get("title") or "").lower()
             if any(w in title_l for w in cfg.PHOTO_TITLE_BLOCKLIST):
                 continue
-            if (r.get("width") or 0) < cfg.IMAGE_SIZE[0] or r.get("id") in _USED_PHOTO_IDS:
+            if (r.get("width") or 0) < cfg.IMAGE_SIZE[0] or _photo_used(r.get("id"), r.get("foreign_landing_url")):
                 continue
             results.append(r)
         return results
@@ -283,6 +369,12 @@ def find_topic_photo(title: str):
     queries = generate_photo_queries(title)
     print(f"[Image Engine] Photo search phrases: {queries}")
 
+    # 1. Pexels: large library with real diabetes photos (meters, insulin pens, meals, exercise)
+    photo, credit = find_pexels_photo(queries)
+    if photo is not None:
+        return photo, credit
+
+    # 2. Openverse CC0 photos (few diabetes photos, so only a fallback)
     for sources in (cfg.OPENVERSE_SOURCES, cfg.OPENVERSE_FALLBACK_SOURCES):
         for query in queries:
             results = search_open_photos(query, sources)
