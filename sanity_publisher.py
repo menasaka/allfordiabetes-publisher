@@ -308,7 +308,10 @@ def publish_sanity_post(
         body += html_to_portable_text(cfg.MEDICAL_DISCLAIMER_HTML)
 
         metadesc = extract_yoast_description(content)
-        names = category_names or cfg.DEFAULT_CATEGORIES
+        names = list(category_names or cfg.DEFAULT_CATEGORIES)
+        # Categories every new article gets (e.g. the news section), added after the chosen ones
+        # so the main category (the first) stays the editor's choice.
+        names += [n for n in getattr(cfg, "ALWAYS_CATEGORIES", []) if n not in names]
         doc = {
             "_id": f"post-{datetime.now(timezone.utc):%Y%m%d%H%M%S}-{secrets.token_hex(3)}",
             "_type": "post",

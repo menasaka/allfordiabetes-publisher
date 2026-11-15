@@ -25,6 +25,9 @@ CATEGORY_MAP = {
     "Diabetes and Coronavirus": "category-diabetes-and-coronavirus",
 }
 DEFAULT_CATEGORIES = ["Diabetes Type 2"]
+# Every new article is also put in these categories (after the chosen ones, so the main category is unchanged).
+# "Diabetes News" = the site's news section (/category/diabetes_news/ and the "Diabetes news" sidebar box).
+ALWAYS_CATEGORIES = ["Diabetes News"]
 
 # ------------------------------------------------------------------------------
 # Writing rules
